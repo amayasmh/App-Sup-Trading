@@ -1,5 +1,6 @@
 
 symbols = {
+  "CAC40" : "^FCHI",
   "Air Liquide": "AI.PA",
   "Airbus SE": "AIR.PA",
   "Alstom": "ALO.PA",
