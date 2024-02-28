@@ -18,12 +18,13 @@ if __name__ == "__main__":
         
         option = menu()
         if option == 4:
+            logger.info("Quitter le programme")
             break
         
         if not process_options(option):
             break
     
-    print("\n\nFin du programme principal\n")
+    print("\nFin du programme principal\n")
     logger.info("Fin du programme principal\n")
 
 
