@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, filename="./Log/SupTrading.log", filemod
 logger = logging.getLogger(__name__)
 
 
-with open ("./Config/Config.json", "r") as conf_db:
+with open ("./Config/DBConfig.json", "r") as conf_db:
         dataConf = json.load(conf_db)
         host = dataConf["host"]
         database = dataConf["database"]

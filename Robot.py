@@ -2,6 +2,7 @@ import json
 from Modules.DataBaseFuncs import connect, create_table, create_trigger, insert_data
 from Modules.Data import temps_reel_data
 from Modules.Symbols import symbols
+from Modules.SendMail import SendMail
 from datetime import datetime
 import pandas as pd
 import time  # Importer le module time
@@ -24,7 +25,7 @@ while True:
     hour = current_time.hour
     minute = current_time.minute
     
-    if should_run(hour, minute):
+    if not should_run(hour, minute):
         print("\nHors des heures de trading. Heure actuelle: ", hour, ":", minute)
         break  # Sortie de la boucle si hors des heures de trading
     
@@ -59,6 +60,29 @@ while True:
                 file.write(f"Temps total d'insertion: {insertion_all_time} secondes\n")
     else:
         print("\nAucune nouvelle donnée. Heure actuelle:", hour, ":", minute)
+    
+    
+    # Vider la table si l'heure est 17h55
+    if hour == 11 and minute >= 36:
         
+        # Récupérer toutes les données de la table
+        cursor.execute("SELECT * FROM cac40_daily_data")
+        rows = cursor.fetchall()
+        df = pd.DataFrame(rows, columns=['index','date', 'share', 'symbol', 'open', 'high', 'low', 'close', 'adj_close', 'volume'])
+        
+        # Exporter les données dans un fichier CSV
+        csv_file_name = f'Files/cac40_daily_data_backup_{datetime.now()}.csv'
+        df.to_csv(csv_file_name, index=False)
+        print(f"Les données ont été exportées dans le fichier {csv_file_name}.")
+        
+        #envoi de mail
+        SendMail(f"Copie des donnees du cac40 {datetime.now()}","Bonjour\n Voici le fichier du cours des actions du CAC40 pour aujourd'hui\n Cordialement Equipe IT",csv_file_name)
+        
+        cursor.execute("TRUNCATE TABLE cac40_daily_data")
+        connexion.commit()
+        print("Table cac40_daily_data vidée.")  
+        break
+        
+          
 cursor.close()
 connexion.close()
