@@ -41,7 +41,7 @@ Le robot suit un processus structuré pour extraire, stocker et gérer les donn�
    - Le déclencheur configuré précédemment copie ces mêmes données dans `cac40_history_data` pour un stockage à long terme.
 
 5. **Exportation des Données et Envoi par Email** :
-   - À 17h55, compile toutes les données du jour de `cac40_daily_data` dans un fichier CSV.
+   - À 17h59, compile toutes les données du jour de `cac40_daily_data` dans un fichier CSV.
    - Envoie ce fichier par email à une liste de destinataires prédéfinie, facilitant la diffusion rapide des informations.
 
 6. **Nettoyage de la Table Daily** :
@@ -171,7 +171,7 @@ Modifiez le fichier de configuration (typiquement `DBConfig.json` dans le dossie
 
 #### Email
 
-Dans le même dossier `Config`, créez ou modifiez un fichier pour la configuration de l'email (vous pouvez l'appeler `MailConfig.json`) avec les paramètres suivants pour configurer le serveur SMTP et les destinataires des emails :
+Dans le même dossier `Config`, modifiez le fichier pour la configuration de l'email (`MailConfig.json`) avec les paramètres suivants pour configurer le serveur SMTP et les destinataires des emails :
 
 ```json
 {
@@ -194,7 +194,7 @@ Le robot d'extraction de données peut être déployé et automatisé sur des sy
 2. **Ajouter une Tâche Planifiée :**
    - Ajoutez la ligne suivante pour exécuter le script chaque jour ouvrable (du lundi au vendredi) pendant les heures de marché (09:00 à 17:30) :
      ```
-     * 9-17 * * 1-5 /chemin/vers/python3 /chemin/vers/votre/script/Robot.py
+     * 9-18 * * 1-5 /chemin/vers/python3 /chemin/vers/votre/script/Robot.py
      ```
    - Assurez-vous de remplacer `/chemin/vers/python3` et `/chemin/vers/votre/script/Robot.py` par les chemins réels vers votre interpréteur Python et votre script.
 
