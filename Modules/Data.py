@@ -36,13 +36,21 @@ def get_key(value):
         return key_wanted
 
 def temps_reel_data(symbols):
-    print(type(symbols))
+    
+    """
+    Télécharge et traite les données en temps réel pour une liste de symboles boursiers.
+
+    :param symbols: Une liste de chaînes de caractères représentant les symboles boursiers à traiter.
+    :return: Un DataFrame pandas contenant les dernières données pour tous les symboles fournis.
+             Si aucune donnée n'est récupérée, retourne un DataFrame vide.
+    """
+    
     final_rows = []  # Liste pour stocker la dernière ligne de chaque symbole
     for elem in symbols:
         share = get_key(elem)  # Assurez-vous que la fonction get_key est définie correctement
         now = datetime.now()
         start = now - timedelta(minutes=120)
-        data = yf.download(elem, start="2024-03-05", interval="1m")
+        data = yf.download(elem, start=start, interval="1m")
         #print(data)
         try:
             data.reset_index(inplace=True)
@@ -61,17 +69,28 @@ def temps_reel_data(symbols):
     if final_rows:
         return pd.concat(final_rows)  # Retourner un DataFrame contenant les dernières lignes pour tous les symboles
     else:
+        
         return pd.DataFrame()  # Retourner un DataFrame vide si aucune donnée n'est récupérée
  
 
 def process_hist(symbol,data):
     
+    """
+    Traite l'historique d'un symbole en proposant à l'utilisateur de stocker les données dans un fichier,
+    de visualiser l'historique via un graphique, ou de retourner au menu précédent.
+
+    :param symbol: Symbole boursier dont l'historique est traité.
+    :param data: DataFrame contenant l'historique du symbole.
+    :return: Le code d'option choisi par l'utilisateur.
+    """
+    
+    logger.info(f"Traitement de l'historique pour le symbole {symbol}.")
     print("\nVeuillez choisir une option:\n")
     print("1- Stocker l'historique dans un fichier\n2- Visualiser l'historique (Graphe)\n3- Retour\n")
     option = int(input())
     
     if option == 1:
-       
+        logger.info(f"Option 1 choisie pour le symbole {symbol}.")
         while(1):
             
             print("\nVeuillez choisir le format du fichier (csv/xlsx):\n")
@@ -80,6 +99,7 @@ def process_hist(symbol,data):
                 break 
     
     elif option == 2:
+        logger.info(f"Option 2 choisie pour le symbole {symbol}. Visualisation de l'historique.")
         viz(data)
     
     elif option == 3:
@@ -93,14 +113,27 @@ def process_hist(symbol,data):
     
 def history(symbol, start, end, interval, period, option):
     
+    """
+    Télécharge et traite l'historique boursier d'un symbole donné pour une période spécifiée.
+
+    :param symbol: Symbole boursier à analyser.
+    :param start: Date de début pour le téléchargement des données (utilisé avec option 1).
+    :param end: Date de fin pour le téléchargement des données (utilisé avec option 1).
+    :param interval: Intervalle des données à télécharger.
+    :param period: Période de téléchargement des données (utilisé avec option 2).
+    :param option: Option de téléchargement (1 pour un intervalle spécifique, 2 pour une période).
+    :return: None
+    """ 
+    
     if option == 1:
+        logger.info(f"Téléchargement des données pour {symbol} du {start} au {end} avec un intervalle de {interval}.")
         data = yf.download(symbol, start=start, end=end, interval=interval)
     elif option == 2:
+        logger.info(f"Téléchargement des données pour {symbol} sur la période {period}.")
         data = yf.download(symbol, period=period)
-    print(data)
+    
     data.reset_index(inplace=True)
-    print("la j'ai reset\n")
-    print(data)
+    
     
     share = get_key(symbol)
     data['share'] = share
@@ -117,3 +150,5 @@ def history(symbol, start, end, interval, period, option):
     print(data)    
     while(process_hist(symbol, data) != 3):
         continue
+    
+    logger.info(f"Fin du traitement pour {symbol}.")

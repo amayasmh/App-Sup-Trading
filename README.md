@@ -12,25 +12,51 @@ Ce document technique détaille le fonctionnement d'un robot automatisé conçu 
 
 ### Structure du Robot
 
-Le robot est structuré autour de plusieurs modules principaux, chacun ayant une fonction spécifique :
 
-- **Modules.DataBaseFuncs** : Contient les fonctions pour se connecter à la base de données PostgreSQL, créer des tables, des déclencheurs et insérer des données.
-- **Modules.Data** : Fournit les fonctions pour extraire les données financières en temps réel.
-- **Modules.Symbols** : Répertorie les symboles des actions à surveiller.
+Le robot est constitué de plusieurs modules clés, chacun dédié à une tâche spécifique :
 
-### Flux de Travail du Robot
+- **Modules.DataBaseFuncs** : Ce module inclut les fonctions nécessaires pour établir une connexion avec la base de données PostgreSQL, créer des tables et des déclencheurs, et pour l'insertion des données.
+- **Modules.Data** : Fournit les fonctions pour l'extraction des données financières en temps réel via la bibliothèque yfinance.
+- **Modules.Symbols** : Contient la liste des symboles boursiers du CAC40 à surveiller.
+- **Modules.SendMail** : Gère l'envoi d'emails avec les fichiers de données extraits.
 
-1. **Initialisation de la Connexion à la Base de Données** : Le robot établit d'abord une connexion à la base de données PostgreSQL en utilisant les paramètres de configuration stockés dans `./Config/Config.json`.
-2. **Création de Tables et de Triggers** : Le robot vérifie l'existence des tables nécessaires (`cac40_daily_data`, `cac40_history_data`) et crée un déclencheur pour copier automatiquement les nouvelles insertions de `cac40_daily_data` vers `cac40_history_data`.
-3. **Extraction des Données** : Le robot exécute une boucle continue durant les heures de trading (de 09:00 à 17:30), utilisant `yfinance` pour récupérer les données en temps réel pour chaque symbole configuré.
-4. **Stockage des Données** : Les données extraites sont ensuite insérées dans la table `cac40_daily_data`. Un déclencheur configuré copie automatiquement ces données dans `cac40_history_data` pour un archivage à long terme.
-5. **Gestion des Logs** : Toutes les opérations importantes sont enregistrées dans un fichier log pour faciliter le débogage et le suivi des performances.
+## Flux de Travail du Robot
+
+Le robot suit un processus structuré pour extraire, stocker et gérer les données financières en temps réel. Chaque étape du processus est conçue pour fonctionner de manière autonome et efficace :
+
+1. **Connexion à la Base de Données** :
+   - Initie la connexion à PostgreSQL en utilisant les paramètres définis dans `./Config/DBConfig.json`.
+   - Cette connexion permet au robot d'interagir directement avec la base de données pour toutes les opérations nécessaires.
+
+2. **Création de Tables et Déclencheurs** :
+   - Vérifie l'existence et crée, si nécessaire, deux tables principales : `cac40_daily_data` pour les données du jour et `cac40_history_data` pour l'archivage.
+   - Installe un déclencheur pour copier automatiquement chaque nouvelle entrée de `cac40_daily_data` vers `cac40_history_data`, assurant un archivage systématique des données.
+
+3. **Extraction des Données** :
+   - Lance une boucle d'extraction durant les heures de marché (09:00 à 17:30) pour récupérer les données des symboles listés dans `Modules.Symbols`.
+   - Utilise `yfinance` pour obtenir des données financières précises et à jour.
+
+4. **Insertion des Données dans la Table Daily** :
+   - Insère les nouvelles données récupérées dans la table `cac40_daily_data`.
+   - Le déclencheur configuré précédemment copie ces mêmes données dans `cac40_history_data` pour un stockage à long terme.
+
+5. **Exportation des Données et Envoi par Email** :
+   - À 17h55, compile toutes les données du jour de `cac40_daily_data` dans un fichier CSV.
+   - Envoie ce fichier par email à une liste de destinataires prédéfinie, facilitant la diffusion rapide des informations.
+
+6. **Nettoyage de la Table Daily** :
+   - Vide la table `cac40_daily_data` avec une commande `TRUNCATE` après l'envoi de l'email, préparant ainsi la base de données pour la prochaine session de trading tout en conservant les archives dans `cac40_history_data`.
+
+Ce flux de travail garantit une collecte et une gestion efficaces des données de marché, soutenant l'analyse et le trading en fournissant des données actualisées et archivées de manière fiable et accessible.
+
 
 ### Configuration et Dépendances
 
 - **PostgreSQL** et **Python 3.x** comme base technologique.
 - **Bibliothèques Python** nécessaires : `json`, `psycopg2`, `pandas`, `yfinance`, ainsi que `datetime` et `time` pour la gestion temporelle.
-- **Configuration JSON** : Contient les paramètres de connexion à la base de données.
+- **Configuration JSON** : Contient les paramètres de connexion à la base de données et la configuration du mail.
+
+
 
 ## Application en Ligne de Commande Sup-Trading
 
@@ -71,6 +97,7 @@ Ce guide détaille les étapes nécessaires au déploiement de la solution App-S
 - Python 3.x installé sur votre machine.
 - Accès à un serveur PostgreSQL.
 
+
 ## Étapes de Configuration
 
 ### 1. Récupération du Projet
@@ -78,7 +105,7 @@ Ce guide détaille les étapes nécessaires au déploiement de la solution App-S
 Clonez ou téléchargez le dossier du projet depuis son dépôt Git vers un répertoire de votre choix :
 
 ```bash
-git clone URL_DU_PROJET
+git clone git@github.com:amayasmh/App-Sup-Trading.git
 ```
 
 ### 2. Création et Activation d'un Environnement Virtuel
@@ -127,9 +154,11 @@ Assurez-vous que `requirements.txt` est présent à la racine du projet.
   mkdir Log
   ```
 
-### 5. Configuration de la Base de Données
+### 5. Configuration de la Base de Données et de l'Email
 
-Modifiez le fichier de configuration (typiquement `Config.json` dans le dossier `Config`) avec les paramètres de votre base de données PostgreSQL :
+#### Base de Données
+
+Modifiez le fichier de configuration (typiquement `DBConfig.json` dans le dossier `Config`) avec les paramètres de votre base de données PostgreSQL :
 
 ```json
 {
@@ -140,7 +169,66 @@ Modifiez le fichier de configuration (typiquement `Config.json` dans le dossier 
 }
 ```
 
-### 6. Lancement de l'Application
+#### Email
+
+Dans le même dossier `Config`, créez ou modifiez un fichier pour la configuration de l'email (vous pouvez l'appeler `MailConfig.json`) avec les paramètres suivants pour configurer le serveur SMTP et les destinataires des emails :
+
+```json
+{
+    "host": "smtp.gmail.com",
+    "port": 465,
+    "user": "saghiraghiles.web@gmail.com",
+    "password": "entg snoi szzo ymiz",
+    "to": "aghiles.saghir@supdevinci-edu.fr,amayas.mahmoudi01@gmail.com"
+}
+```
+### 6. Déploiement et Automatisation du robot
+
+Le robot d'extraction de données peut être déployé et automatisé sur des systèmes Linux et Windows pour assurer son exécution pendant les heures de marché. Voici les étapes à suivre pour chaque système d'exploitation :
+
+### Sur Linux (avec Cron)
+
+1. **Ouvrir le Crontab :**
+   - Ouvrez un terminal et tapez `crontab -e` pour éditer le fichier crontab de l'utilisateur actuel.
+
+2. **Ajouter une Tâche Planifiée :**
+   - Ajoutez la ligne suivante pour exécuter le script chaque jour ouvrable (du lundi au vendredi) pendant les heures de marché (09:00 à 17:30) :
+     ```
+     * 9-17 * * 1-5 /chemin/vers/python3 /chemin/vers/votre/script/Robot.py
+     ```
+   - Assurez-vous de remplacer `/chemin/vers/python3` et `/chemin/vers/votre/script/Robot.py` par les chemins réels vers votre interpréteur Python et votre script.
+
+3. **Sauvegarder et Quitter :**
+   - Sauvegardez les modifications et quittez l'éditeur. Le cron se chargera de lancer le script selon la planification définie.
+
+### Sur Windows (avec Planificateur de Tâches)
+
+1. **Ouvrir le Planificateur de Tâches :**
+   - Appuyez sur `Win + R`, tapez `taskschd.msc` et appuyez sur `Entrée` pour ouvrir le Planificateur de Tâches.
+
+2. **Créer une Nouvelle Tâche :**
+   - Dans le menu `Action`, choisissez `Créer une tâche...`.
+   - Donnez un nom à votre tâche, par exemple, `RobotExtractionDonnees`.
+
+3. **Configurer les Triggers :**
+   - Allez à l'onglet `Déclencheurs`, cliquez sur `Nouveau...` et configurez-le pour démarrer à 09:00 chaque jour ouvrable.
+
+4. **Configurer l'Action :**
+   - Allez à l'onglet `Actions`, cliquez sur `Nouveau...` et choisissez `Démarrer un programme`.
+   - Dans `Programme/script`, indiquez le chemin vers votre interpréteur Python.
+   - Dans `Ajouter des arguments`, entrez le chemin vers votre script, par exemple, `C:\chemin\vers\Robot.py`.
+   - Dans `Démarrer dans`, spécifiez le répertoire de travail de votre script si nécessaire.
+
+5. **Configurer les Conditions et Paramètres :**
+   - Ajustez les onglets `Conditions` et `Paramètres` selon vos besoins, par exemple, pour ne pas exécuter la tâche si l'ordinateur fonctionne sur batterie.
+
+6. **Sauvegarder la Tâche :**
+   - Cliquez sur `OK` pour enregistrer votre tâche. Vous devrez peut-être fournir le mot de passe de votre compte utilisateur pour autoriser la planification de la tâche.
+
+Votre robot est maintenant configuré pour s'exécuter automatiquement pendant les heures de marché sur Linux et Windows. Assurez-vous de tester la tâche planifiée pour vérifier qu'elle démarre comme prévu.
+
+
+### 7. Lancement de l'Application de ligne de commande
 
 Avec l'environnement toujours activé, lancez l'application via :
 

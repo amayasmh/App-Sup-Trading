@@ -1,11 +1,7 @@
 
 import json
-import logging
 import psycopg2
 
-logging.basicConfig(level=logging.INFO, filename="./Log/SupTrading.log", filemode="a", format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s')
-
-logger = logging.getLogger(__name__)
 
 
 with open ("./Config/DBConfig.json", "r") as conf_db:
@@ -17,8 +13,13 @@ with open ("./Config/DBConfig.json", "r") as conf_db:
 
 def connect():
     
+    """
+    Établit une connexion à la base de données PostgreSQL en utilisant les informations de configuration.
+
+    :return: Un tuple contenant le curseur et la connexion si la connexion est réussie, sinon (None, None).
+    """
         
-    logger.info('Connecting to the PostgreSQL database...')
+    
     try:
         # Connexion à la base de données
         connexion = psycopg2.connect(
@@ -31,19 +32,23 @@ def connect():
         # Création d'un curseur
         cursor = connexion.cursor()
         print("connection etablie")
-        
+       
     except (Exception, psycopg2.Error) as error:
-        logger.error(f"\nErreur lors de la connexion à PostgreSQL :{error}\n")
+        print(f"\nErreur lors de la connexion à PostgreSQL :{error}\n")
+        cursor, connexion = None, None
+        
     
-    
-    finally:
-      
-        if connexion:
-            return cursor,connexion
-        else:
-            return None,None
+    return cursor, connexion
 
 def create_trigger(cursor, connexion):
+    
+    """
+    Crée un déclencheur dans la base de données PostgreSQL qui insère automatiquement des données
+    dans une table historique après chaque insertion dans une table quotidienne.
+
+    :param cursor: Le curseur de la base de données PostgreSQL.
+    :param connexion: La connexion à la base de données PostgreSQL.
+    """
     
     try:
         cursor.execute("""
@@ -66,42 +71,66 @@ def create_trigger(cursor, connexion):
 
         connexion.commit()
         print("\nDéclencheur ajouté avec succès.\n")
-        
+      
     except psycopg2.Error as e:
         
         if "already exists" in str(e):
+           
             print("\nLe déclencheur existe déjà.\n")
         else:
+         
             print(f"\nErreur lors de l'ajout du déclencheur :{e}\n")
+            
     
 
 def create_table(table_name,cursor,connexion):
     
+    """
+    Crée une nouvelle table dans la base de données si elle n'existe pas déjà.
+
+    :param table_name: Nom de la table à créer.
+    :param cursor: Curseur de connexion à la base de données.
+    :param connexion: Connexion à la base de données.
+    """
+    
     create_table_query = f'''
     CREATE TABLE IF NOT EXISTS {table_name} (
         id SERIAL PRIMARY KEY,
-        date TIMESTAMP WITH TIME ZONE,
-        share VARCHAR(255),
+        date TIMESTAMP WITH TIME ZONE NOT NULL,
+        share VARCHAR(255) NOT NULL,
         symbol VARCHAR(25),
         open FLOAT,
         high FLOAT,
         low FLOAT,
         close FLOAT,
         adj_close FLOAT,
-        volume FLOAT
+        volume FLOAT,
+        UNIQUE (date, share)
     );
     '''
     
     cursor.execute(create_table_query)
     connexion.commit()
-    print("\ntable crée\n")
+  
+    print("\nTable créée ou déjà existante.\n")
     
 
 
 def insert_data(table_name, cursor, connexion, row):
+    
+    """
+    Insère une ligne de données dans une table spécifique.
+
+    :param table_name: Nom de la table dans laquelle insérer les données.
+    :param cursor: Curseur de connexion à la base de données.
+    :param connexion: Connexion à la base de données.
+    :param row: Dictionnaire contenant les données à insérer.
+    """
+    
     insert_query = f'''
         INSERT INTO {table_name} (date, share, symbol, open, high, low, close, adj_close, volume)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (date, share) DO NOTHING;
     '''
     try:
         
@@ -114,8 +143,12 @@ def insert_data(table_name, cursor, connexion, row):
         
         cursor.execute(insert_query, data_tuple)
         connexion.commit()
+     
         print("\nLigne insérée dans la table\n")
+        
     except Exception as e:
+     
         print(f"\nOupsss, un problème est survenu lors de l'insertion dans la base de données: {e}\n")
         connexion.rollback()
+        
 

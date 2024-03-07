@@ -1,39 +1,43 @@
 import json
 import smtplib
 from email.message import EmailMessage
-import logging
 
-# Configuration du logger
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
-def SendMail(Subject: str, Body: str, Attachment: str):
+
+def send_mail(subject: str, body: str, attachment: str):
+    """
+    Envoie un email avec un sujet, un corps de message et une pièce jointe.
+
+    :param subject: Sujet de l'email.
+    :param body: Corps du message de l'email.
+    :param attachment: Chemin vers le fichier à attacher à l'email.
+    """
     try:
-        # Lire le fichier de configuration
+        # Lire le fichier de configuration des détails de l'email.
         with open('./Config/MailConfig.json', 'r') as file:
-            Email = json.load(file)
+            emailConfig = json.load(file)
         
-        Msg = EmailMessage()
-        Msg['Subject'] = Subject
-        Msg['From'] = Email['user']
-        # Divisez la chaîne des destinataires en liste si nécessaire
-        Msg['To'] = Email['to'].split(',')  # S'il y a plusieurs destinataires
-        Msg.set_content(Body)
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = emailConfig['user']
+        # Si les destinataires sont multiples, ils sont séparés par une virgule dans la configuration.
+        msg['To'] = emailConfig['to'].split(',')  # Transforme la chaîne des destinataires en liste
+        msg.set_content(body)
         
-        with open(Attachment, 'rb') as File:
-            Data = File.read()
-            FileName = File.name
-        Msg.add_attachment(Data, maintype='application', subtype='octet-stream', filename=FileName)
+        # Attache le fichier spécifié à l'email.
+        with open(attachment, 'rb') as file:
+            data = file.read()
+            fileName = file.name
+        msg.add_attachment(data, maintype='application', subtype='octet-stream', filename=fileName)
         
-        logger.info('Sending email...')
-        with smtplib.SMTP_SSL(Email['host'], Email['port']) as Server:
-            Server.login(Email['user'], Email['password'])
-            Server.send_message(Msg)
-        logger.info('Email sent successfully')
+        
+        with smtplib.SMTP_SSL(emailConfig['host'], emailConfig['port']) as server:
+            server.login(emailConfig['user'], emailConfig['password'])
+            server.send_message(msg)
+        
+        print("Email envoyé avec succès.")
         
     except Exception as error:
-        logger.error('Failed to send email', exc_info=True)
+       
+        print("Echec de l\'envoi de l\'email.")
         raise error
-
-# Exemple d'utilisation
-#SendMail('Test Subject', 'This is the body of the email', 'path/to/your/attachment.txt')
